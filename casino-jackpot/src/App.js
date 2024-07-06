@@ -1,37 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
+import { spinAndGetCredits, cashOutCredits } from './ServerAPI';
 
-const symbols = ['C', 'L', 'O', 'W'];
 
 function App() {
+  const [sessionId, setSessionId] = useState(null); // Store session ID
   const [credits, setCredits] = useState(10);
   const [slots, setSlots] = useState(['X', 'X', 'X']);
   const [spinning, setSpinning] = useState([false, false, false]);
 
-  const spinSlots = () => {
-    if (credits <= 0 || spinning.some(spin => spin)) return;
+  useEffect(() => {
+    // Generate or fetch a session ID when the component mounts
+    const storedSessionId = localStorage.getItem('session_id');
+    if (storedSessionId) {
+      setSessionId(storedSessionId);
+    } else {
+      const newSessionId = generateSessionId();
+      localStorage.setItem('session_id', newSessionId);
+      setSessionId(newSessionId);
+    }
+  }, []);
 
-    setCredits(credits - 1);
+  const generateSessionId = () => {
+    // Simple function to generate a random session ID
+    return 'session_' + Math.random().toString(36).substr(2, 9);
+  };
+
+  const spinSlots = async () => {
+    if (credits <= 0 || spinning.some(spin => spin) || !sessionId) return;
+
     setSpinning([true, true, true]);
     setSlots(['X', 'X', 'X']);
 
-    const results = Array(3).fill().map(() => symbols[Math.floor(Math.random() * symbols.length)]);
-    setTimeout(() => {
-      setSpinning([false, true, true]);
-      setSlots([results[0], 'X', 'X']);
-    }, 2000);
-    setTimeout(() => {
-      setSpinning([false, false, true]);
-      setSlots([results[0], results[1], 'X']);
-    }, 3000);
-    setTimeout(() => {
-      setSpinning([false, false, false]);
-      setSlots(results);
-    }, 4000);
+    try {
+      const { slots: result, credits: newCredits } = await spinAndGetCredits(sessionId);
+      setTimeout(() => {
+        setSpinning([false, true, true]);
+        setSlots([result[0], 'X', 'X']);
+      }, 2000);
+      setTimeout(() => {
+        setSpinning([false, false, true]);
+        setSlots([result[0], result[1], 'X']);
+      }, 3000);
+      setTimeout(() => {
+        setSpinning([false, false, false]);
+        setSlots(result);
+        setCredits(newCredits);
+      }, 4000);
+    } catch (error) {
+      console.error('Failed to spin slots:', error);
+    }
   };
 
-  const cashOut = () => {
-    alert(`You cashed out with ${credits} credits!`);
+  const cashOut = async () => {
+    if (!sessionId) return;
+
+    try {
+      await cashOutCredits(sessionId);
+      alert(`You cashed out with ${credits} credits!`);
+      setCredits(0);
+    } catch (error) {
+      console.error('Failed to cash out:', error);
+    }
   };
 
   return (
