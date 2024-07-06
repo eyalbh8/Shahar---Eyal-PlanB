@@ -36,8 +36,16 @@
   transition: transform 0.5s ease-in-out;
 }
 
-.slot.spinning {
+.slot.spinning-slow {
+  animation: spin 1s infinite linear;
+}
+
+.slot.spinning-medium {
   animation: spin 0.5s infinite linear;
+}
+
+.slot.spinning-fast {
+  animation: spin 0.2s infinite linear;
 }
 
 @keyframes spin {
